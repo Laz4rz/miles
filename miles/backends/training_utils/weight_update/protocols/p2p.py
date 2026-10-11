@@ -148,6 +148,7 @@ class UpdateWeightP2P(WeightTransferProtocol):
                         model_replica,
                         remote_shard.published_nbytes_by_name,
                         published_by=f"rollout engine {remote_shard.rollout_engine_ind} rank {rollout_engine_rank}",
+                        published_dtypes_by_name=remote_shard.weight_dtypes,
                     )
                 self._replica_targets.append(_ReplicaTarget(model_replica, remote_shards))
 

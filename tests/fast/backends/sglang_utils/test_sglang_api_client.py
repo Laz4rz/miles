@@ -311,12 +311,13 @@ async def test_every_remaining_post_method_wire_contract(client, recorder, call,
     assert len(recorder.calls) == 1
 
 
-async def test_get_remote_instance_transfer_engine_info_unwraps_the_response(client, monkeypatch):
-    """The method returns the inner field, not the whole JSON body."""
+async def test_get_remote_instance_transfer_engine_info_preserves_dtype_metadata(client, monkeypatch):
+    """The sender needs both memory locations and actual per-tensor dtypes."""
     rec = _Recorder()
-    rec.install(monkeypatch, responses=[_FakeResponse(payload={"remote_instance_transfer_engine_info": {"a": 1}})])
+    payload = {"remote_instance_transfer_engine_info": {"a": 1}, "weight_dtypes": {"a": "bfloat16"}}
+    rec.install(monkeypatch, responses=[_FakeResponse(payload=payload)])
 
-    assert await client.get_remote_instance_transfer_engine_info(rank=2) == {"a": 1}
+    assert await client.get_remote_instance_transfer_engine_info(rank=2) == payload
     assert rec.calls[0][2]["params"] == {"rank": 2}
 
 
@@ -514,7 +515,7 @@ class TestInformationGetters:
         assert (kwargs["params"], kwargs["timeout"]) == ({"rank": 2}, 5.0)
 
     async def test_parallelism_info_returns_the_whole_json_body(self, client, monkeypatch):
-        """Unlike the transfer-engine getter, this one does not unwrap a field."""
+        """Preserve all fields in the parallelism response."""
         rec = _Recorder()
         rec.install(monkeypatch, responses=[_FakeResponse(payload={"tp_size": 4, "dp_size": 2})])
 

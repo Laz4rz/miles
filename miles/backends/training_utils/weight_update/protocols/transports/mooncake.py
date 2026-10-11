@@ -27,6 +27,7 @@ class RemoteShard:
     rollout_engine_rank: int
     session_id: str
     weight_locations_by_name: dict[str, RemoteWeightLocation]
+    weight_dtypes: dict[str, str]
 
     @property
     def published_nbytes_by_name(self) -> dict[str, int]:
@@ -115,9 +116,12 @@ class MooncakeTransport:
 def _query_remote_shard(
     rollout_engine: SGLangApiClient, rollout_engine_ind: int, rollout_engine_rank: int
 ) -> RemoteShard:
-    session_id, weights_info = async_utils.run(
-        rollout_engine.get_remote_instance_transfer_engine_info(rank=rollout_engine_rank)
-    )
+    info = async_utils.run(rollout_engine.get_remote_instance_transfer_engine_info(rank=rollout_engine_rank))
+    session_id, weights_info = info["remote_instance_transfer_engine_info"]
+    if not info.get("weight_dtypes"):
+        raise RuntimeError(
+            "P2P requires per-tensor dtype metadata from SGLang; upgrade the inference workers before transferring weights"
+        )
     assert (
         session_id is not None
     ), f"rollout engine {rollout_engine_ind} rank {rollout_engine_rank} has no Mooncake session"
@@ -126,6 +130,7 @@ def _query_remote_shard(
         rollout_engine_rank=rollout_engine_rank,
         session_id=session_id,
         weight_locations_by_name={name: RemoteWeightLocation(*location) for name, location in weights_info.items()},
+        weight_dtypes=info["weight_dtypes"],
     )
 
 

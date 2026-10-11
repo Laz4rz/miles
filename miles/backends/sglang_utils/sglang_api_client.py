@@ -145,7 +145,7 @@ class SGLangApiClient:
             timeout=5.0,
         )
         response.raise_for_status()
-        return response.json()["remote_instance_transfer_engine_info"]
+        return response.json()
 
     async def get_parallelism_info(self, rank: int):
         response = await GeneralHttpClientProvider.client().get(

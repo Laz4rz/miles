@@ -7,6 +7,18 @@ import pytest
 import torch
 
 
+@pytest.mark.parametrize("receiver_dtype", ["bfloat16", "float16", None])
+def test_equal_byte_counts_still_require_matching_dtypes(model_replica_module, receiver_dtype):
+    layout = model_replica_module.TransferBufferParamLayout.from_tensor(torch.empty(4, dtype=torch.bfloat16))
+    replica = SimpleNamespace(transfer_buffer_param_layouts={"weight": layout})
+    dtypes = {} if receiver_dtype is None else {"weight": receiver_dtype}
+    expectation = nullcontext() if receiver_dtype == "bfloat16" else pytest.raises(ValueError, match="dtype mismatch")
+    with expectation:
+        model_replica_module.assert_replica_matches_shard(
+            replica, {"weight": 8}, "receiver", published_dtypes_by_name=dtypes
+        )
+
+
 @dataclasses.dataclass
 class _Parallelism:
     tp_rank: int

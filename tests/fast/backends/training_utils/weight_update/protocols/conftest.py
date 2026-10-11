@@ -182,10 +182,13 @@ class _FakeRolloutApi:
     def target_address(self, rank: int, name: str) -> int:
         return hash((self.session_id(rank), name)) & 0xFFFFFFFF
 
-    async def get_remote_instance_transfer_engine_info(self, rank: int) -> tuple[str, dict]:
+    async def get_remote_instance_transfer_engine_info(self, rank: int) -> dict:
         self.calls.append("get_remote_instance_transfer_engine_info")
         weights = {name: (self.target_address(rank, name), self.published_weight_numel, 4) for name in ("w", "qk")}
-        return self.session_id(rank), weights
+        return {
+            "remote_instance_transfer_engine_info": [self.session_id(rank), weights],
+            "weight_dtypes": {name: "float32" for name in weights},
+        }
 
     async def get_parallelism_info(self, rank: int) -> dict:
         self.calls.append("get_parallelism_info")

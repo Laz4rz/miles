@@ -498,10 +498,13 @@ class ModelReplicas:
 
 
 def assert_replica_matches_shard(
-    model_replica: ModelReplica, published_nbytes_by_name: Mapping[str, int], published_by: str
+    model_replica: ModelReplica,
+    published_nbytes_by_name: Mapping[str, int],
+    published_by: str,
+    *,
+    published_dtypes_by_name: Mapping[str, str],
 ) -> None:
-    """The replica must hold exactly the weights a rollout engine rank publishes, each in the published number of
-    bytes; otherwise what it loads cannot be written into that rank's memory."""
+    """Require the published weights' byte counts and dtypes before writing into a rollout rank's memory."""
     replica_nbytes_by_name = {
         name: layout.occupied_nbytes for name, layout in model_replica.transfer_buffer_param_layouts.items()
     }
@@ -514,3 +517,10 @@ def assert_replica_matches_shard(
         f"the model replica does not match the weights {published_by} publishes: "
         f"{', '.join(mismatches[:5])} ({len(mismatches)} in all)"
     )
+    # Equal byte counts do not distinguish FP16 from BF16.
+    for name, layout in model_replica.transfer_buffer_param_layouts.items():
+        remote_dtype = published_dtypes_by_name.get(name)
+        if str(layout.dtype).removeprefix("torch.") != remote_dtype:
+            raise ValueError(
+                f"P2P dtype mismatch for {name}: sender={layout.dtype}, {published_by}={remote_dtype}; refusing to write"
+            )
